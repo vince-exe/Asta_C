@@ -9,6 +9,8 @@
 #define MAX_PORT 49151
 
 #define NICK_ALREADY_IN_USE "NICK_ALREADY_IN_USE"
+#define WAIT_FOR_ASTA "WAIT_FOR_ASTA"
+#define ASTA_CLOSED "ASTA_CLOSED"
 
 #define CLEAR_SCREEN() system("cls")
 

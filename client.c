@@ -58,7 +58,7 @@ int main(int argc , char *argv[]) {
         puts("Receive error");
         return 1;
     }
-    printf("\nMessaggio ricevuto dal server: %s", message);
+
     message[recv_size] = '\0';
     if(strcmp(message, NICK_ALREADY_IN_USE) == 0) {
         printf("\nIl nickname %s \x86 utilizzato da un'altro client.", nickname);
@@ -67,10 +67,17 @@ int main(int argc , char *argv[]) {
         return 0;
     }
 
-    if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
-        puts("Receive error");
-        return 1;
+    else if(strcmp(message, WAIT_FOR_ASTA) == 0) {
+        printf("\nIn attesa di altri client per iniziare l'asta :).");
     }
+
+    do {
+        if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
+            puts("Receive error");
+            return 1;
+        }
+        message[recv_size] = '\0';
+    } while(strcmp(message, ASTA_CLOSED));
 
     closesocket(socketClient);
     WSACleanup();

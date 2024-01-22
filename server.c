@@ -1,17 +1,57 @@
 #include <stdio.h>
 #include <winsock2.h>
+
+
+/*
+SOCK_STREAM: INT(1)
+Tipo di socket che fornisce flussi di byte sequenziati, 
+affidabili, bidirezionali e basati sulla connessione con un meccanismo di trasmissione dei dati OOB. 
+Questo tipo di socket usa il protocollo TCP (Transmission Control Protocol) per la famiglia di indirizzi Internet (AF_INET o AF_INET6).
+
+WSAStartup() INCL_WINSOCK_API_PROTOTYPES (Carica la versi)
+socket()
+*/
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 
 #include "./functions/functions.h"
 
-/* utilizzato per linkare automaticamente la libreria */
-#pragma comment(lib,"ws2_32.lib")
+/*
+ * Inizio parte dove si definiscono le costanti
+*/
 
-#define BUFFER_LEN 1024
-#define MIN_CLIENT 1
-#define MAX_CLIENT 100
+/*
+ * Numero minimo di client per iniziare l'asta.
+*/
 #define MIN_ASTA 1
+
+/*
+ * Inizio costanti relative al numero dei client.
+*/
+
+/*
+ * Numero minimo di client selezionabili.
+*/
+#define MIN_CLIENT 1
+
+/*
+ * Numero massimo di client selezionabili.
+*/
+#define MAX_CLIENT 100
+
+/*
+ * Fine costanti relative al numero dei client.
+*/
+
+/*
+ * Lunghezza massima del buffer.
+*/
+#define BUFFER_LEN 1024
+
+/*
+ * Fine parte dove si definiscono le costanti.
+*/
 
 typedef struct User {
     char* username;
@@ -30,7 +70,7 @@ typedef struct AstaVariables {
 }AstaVariables;
 
 int existUsername(UserArray* user_array, const char* newNickname) {
-    for(int i = 0; i < user_array->counter - 1; i++) {
+    for(int i = 0; i < user_array->counter; i++) {
         if(strcmp((user_array->user_array[i].username), newNickname) == 0) {
             return 1;
         }
@@ -105,13 +145,12 @@ int main() {
         }
         
         message[0] = '\0';
-        /* controllare se il nickname è già stato utilizzato ( fare la funzione in functions.h/c)*/
         if((recv_size = recv(user_array.user_array[user_array.counter].socket, message, sizeof(message), 0)) == SOCKET_ERROR) {
             printf("recv failed with error code : %d", WSAGetLastError());
         }
         message[recv_size] = '\0';
         /* controllo se il nickname esiste già*/
-        if(user_array.counter != 0 && existUsername(&user_array, message)) {
+        if((user_array.counter != 0) && existUsername(&user_array, message)) {
             if(send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0) {
                 puts("Send Failed");
                 return 1;
@@ -120,14 +159,22 @@ int main() {
         /* altrimenti alloco l'username */
         else {
             user_array.user_array[user_array.counter].username = malloc(sizeof(char) * strlen(message) + 1);
-            user_array.user_array[user_array.counter].username = message;
+            strcpy(user_array.user_array[user_array.counter].username, message);
             user_array.user_array[user_array.counter].username[strlen((message)) + 1] = '\0';
             printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
+            user_array.counter++;
         }
-        if(user_array.counter >= AstaVariables.min_clients_for_asta) {
+        if(user_array.counter == AstaVariables.min_clients_for_asta) {
             /* dare il messaggio che l'asta è iniziata */
+            printf("\nAsta Iniziata");
         }
-        user_array.counter++;
+        else {
+            message[recv_size] = '\0';
+            if(send(user_array.user_array[user_array.counter - 1].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
+                puts("Send Failed");
+                return 1;
+            }
+        }
     }   
 
     closesocket(serverSocket);
