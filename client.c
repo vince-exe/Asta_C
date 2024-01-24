@@ -40,6 +40,8 @@ int main(int argc , char *argv[]) {
     server.sin_port = htons(8888); 
     
     char nickname[BUFFER_LEN];
+    int typeOfMsg;
+
     printf("Enter Username: ");
     fgets(nickname, sizeof(nickname), stdin);
     nickname[strlen(nickname) - 1] = '\0'; 
@@ -54,30 +56,62 @@ int main(int argc , char *argv[]) {
         return 1;
     }
     message[0] = '\0';
-    if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
+    if((recv_size = recv(socketClient, (char*)&typeOfMsg, sizeof(typeOfMsg), 0)) == SOCKET_ERROR) {
         puts("Receive error");
         return 1;
     }
+    typeOfMsg = ntohl(typeOfMsg);
 
-    message[recv_size] = '\0';
-    if(strcmp(message, NICK_ALREADY_IN_USE) == 0) {
-        printf("\nIl nickname %s \x86 utilizzato da un'altro client.", nickname);
-        closesocket(socketClient);
-        WSACleanup();
-        return 0;
-    }
+    if(typeOfMsg == ASTA_MESSAGES) {
+        if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
+            puts("Receive error");
+            return 1;
+        }
 
-    else if(strcmp(message, WAIT_FOR_ASTA) == 0) {
-        printf("\nIn attesa di altri client per iniziare l'asta :).");
+        message[recv_size] = '\0';
+        if(strcmp(message, NICK_ALREADY_IN_USE) == 0) {
+            printf("\nIl nickname %s \x86 utilizzato da un'altro client.", nickname);
+            closesocket(socketClient);
+            WSACleanup();
+            return 0;
+        }
+        else if(strcmp(message, WAIT_FOR_ASTA) == 0) {
+            printf("\nIn attesa di altri client per iniziare l'asta :).");
+        }
     }
 
     do {
+        message[0] = '\0';
+        /* ricevo il tipo di messaggio */
+        if((recv_size = recv(socketClient, (char*)&typeOfMsg, sizeof(typeOfMsg), 0)) == SOCKET_ERROR) {
+            puts("Receive error");
+            return 1;
+        }
+        typeOfMsg = ntohl(typeOfMsg);
+        /* ricevo il messaggio */
         if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
             puts("Receive error");
             return 1;
         }
         message[recv_size] = '\0';
-    } while(strcmp(message, ASTA_CLOSED));
+
+        switch(typeOfMsg) {
+            case GENERAL_MESSAGE:
+                printf("\n%s", message);
+                break;
+
+            case ASTA_MESSAGES:
+                if(strcmp(message, ASTA_CLOSED) == 0) {
+                    /* TO-DO */
+                }
+                puts("Messaggio riguardante l'asta");
+                break;
+
+            default:
+                puts("Tipo messaggio non identificato");
+                return 1;
+        }
+    } while(1);
 
     closesocket(socketClient);
     WSACleanup();

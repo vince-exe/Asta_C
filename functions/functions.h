@@ -12,6 +12,9 @@
 #define WAIT_FOR_ASTA "WAIT_FOR_ASTA"
 #define ASTA_CLOSED "ASTA_CLOSED"
 
+#define GENERAL_MESSAGE 2
+#define ASTA_MESSAGES 3
+
 #define CLEAR_SCREEN() system("cls")
 
 int get_int(const int min, const int max);

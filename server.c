@@ -17,41 +17,12 @@ socket()
 
 #include "./functions/functions.h"
 
-/*
- * Inizio parte dove si definiscono le costanti
-*/
+#pragma comment(lib,"ws2_32.lib") 
 
-/*
- * Numero minimo di client per iniziare l'asta.
-*/
 #define MIN_ASTA 1
-
-/*
- * Inizio costanti relative al numero dei client.
-*/
-
-/*
- * Numero minimo di client selezionabili.
-*/
 #define MIN_CLIENT 1
-
-/*
- * Numero massimo di client selezionabili.
-*/
 #define MAX_CLIENT 100
-
-/*
- * Fine costanti relative al numero dei client.
-*/
-
-/*
- * Lunghezza massima del buffer.
-*/
 #define BUFFER_LEN 1024
-
-/*
- * Fine parte dove si definiscono le costanti.
-*/
 
 typedef struct User {
     char* username;
@@ -69,6 +40,10 @@ typedef struct AstaVariables {
     int asta_import;
 }AstaVariables;
 
+typedef struct HandleClientParams {
+    User* user;
+}HandleClientParams;
+
 int existUsername(UserArray* user_array, const char* newNickname) {
     for(int i = 0; i < user_array->counter; i++) {
         if(strcmp((user_array->user_array[i].username), newNickname) == 0) {
@@ -77,6 +52,26 @@ int existUsername(UserArray* user_array, const char* newNickname) {
     }
 
     return 0;
+}
+
+/* manda un messaggio a tutti i client */
+void sendToAll(UserArray* user_array, const char* message, int msgType_) {
+    int msgType = htonl(msgType_);
+    for(int i = 0; i < user_array->counter; i++) {
+        send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0);
+        send(user_array->user_array[i].socket, message, strlen(message) + 1, 0);
+    }
+}
+
+DWORD WINAPI handleClient(LPVOID paramater) {
+    int recv_size = 0;
+    char message[BUFFER_LEN];
+    HandleClientParams* param = (HandleClientParams*)paramater;
+
+    printf("\nStart listening thread on %s client", param->user->username);
+    while((recv_size = recv(param->user->socket, message, sizeof(message) , 0)) != SOCKET_ERROR) {
+
+    }
 }
 
 int main() {
@@ -115,7 +110,7 @@ int main() {
     */
     
     int server_port = 8888;
-    AstaVariables.max_clients = 5; AstaVariables.asta_import = 20; AstaVariables.min_clients_for_asta = 2; 
+    AstaVariables.max_clients = 5; AstaVariables.asta_import = 20;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(server_port);
@@ -133,7 +128,7 @@ int main() {
     listen(serverSocket, AstaVariables.max_clients);
 
     int c = sizeof(struct sockaddr_in);
-    int recv_size;
+    int recv_size, msgType;
     char message[BUFFER_LEN];
     
     while(user_array.counter < AstaVariables.max_clients) {
@@ -151,29 +146,42 @@ int main() {
         message[recv_size] = '\0';
         /* controllo se il nickname esiste già*/
         if((user_array.counter != 0) && existUsername(&user_array, message)) {
+            msgType = htonl(ASTA_MESSAGES);
+            send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0);
             if(send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0) {
                 puts("Send Failed");
                 return 1;
             }
         }
-        /* altrimenti alloco l'username */
+        /* altrimenti alloco l'username*/
         else {
             user_array.user_array[user_array.counter].username = malloc(sizeof(char) * strlen(message) + 1);
             strcpy(user_array.user_array[user_array.counter].username, message);
             user_array.user_array[user_array.counter].username[strlen((message)) + 1] = '\0';
+
+            /* stampa sul server il messaggio che il nuovo client si è unito e lo manda anche a tutti i client
+               automaticamente l'ultimo arrivato è escluso dal messaggio perché il counter ancora deve essere incrementato
+            */
             printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
-            user_array.counter++;
-        }
-        if(user_array.counter == AstaVariables.min_clients_for_asta) {
-            /* dare il messaggio che l'asta è iniziata */
-            printf("\nAsta Iniziata");
-        }
-        else {
-            message[recv_size] = '\0';
-            if(send(user_array.user_array[user_array.counter - 1].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
-                puts("Send Failed");
-                return 1;
+            
+            char tmp[BUFFER_LEN];
+            sprintf(tmp, "Giocatore %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
+            sendToAll(&user_array, tmp, GENERAL_MESSAGE);
+
+            if((user_array.counter + 1) == AstaVariables.min_clients_for_asta) {
+                /* dare il messaggio che l'asta è iniziata */
+                printf("\nAsta Iniziata");
             }
+            else {
+                message[recv_size] = '\0';
+                msgType = htonl(ASTA_MESSAGES);
+                send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0);
+                if(send(user_array.user_array[user_array.counter].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
+                    puts("Send Failed");
+                    return 1;
+                }
+            }
+            user_array.counter++;
         }
     }   
 
