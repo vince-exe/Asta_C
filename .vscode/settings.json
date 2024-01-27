@@ -4,6 +4,7 @@
         "windows.h": "c",
         "stdio.h": "c",
         "winsock2.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "stdbool.h": "c"
     }
 }

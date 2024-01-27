@@ -1,68 +1,49 @@
 #include <stdio.h>
 #include <winsock2.h>
 
-
-/*
-SOCK_STREAM: INT(1)
-Tipo di socket che fornisce flussi di byte sequenziati, 
-affidabili, bidirezionali e basati sulla connessione con un meccanismo di trasmissione dei dati OOB. 
-Questo tipo di socket usa il protocollo TCP (Transmission Control Protocol) per la famiglia di indirizzi Internet (AF_INET o AF_INET6).
-
-WSAStartup() INCL_WINSOCK_API_PROTOTYPES (Carica la versi)
-socket()
-*/
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
 
-#include "./functions/functions.h"
+#include "./utils/functions.h"
+#include "./utils/constants.h"
+#include "./utils/structs.h"
 
-#pragma comment(lib,"ws2_32.lib") 
+#pragma comment(lib,"ws2_32.lib") // linka automaticamente la libreria in fase di runtime.
 
-#define MIN_ASTA 1
-#define MIN_CLIENT 1
-#define MAX_CLIENT 100
-#define BUFFER_LEN 1024
-
-typedef struct User {
-    char* username;
-    SOCKET socket;
-}User;
-
-typedef struct UserArray {
-    User* user_array;
-    int counter;
-}UserArray;
-
-typedef struct AstaVariables {
-    int max_clients;
-    int min_clients_for_asta;
-    int asta_import;
-}AstaVariables;
-
-typedef struct HandleClientParams {
-    User* user;
-}HandleClientParams;
-
-int existUsername(UserArray* user_array, const char* newNickname) {
+/**
+ * @brief Funzione che controlla se l'username e' gia' presente tra i vari client.
+ *
+ * @param user_array: Array di 'User' dove controllare se e' presente 'newNickname'.
+ * @param newNickname: Nickname da controllare.
+ * 
+ * @return 0: Se il 'newNickname' non e' presente tra i nickanme di 'user_array'.
+ * @return 1: Se il 'newNickname' e' presente tra i nickanme di 'user_array'.
+ */
+_Bool existUsername(UserArray* user_array, const char* newNickname) {
     for(int i = 0; i < user_array->counter; i++) {
         if(strcmp((user_array->user_array[i].username), newNickname) == 0) {
-            return 1;
+            return (_Bool)1;
         }
     }
 
-    return 0;
+    return (_Bool)0;
 }
 
 /* manda un messaggio a tutti i client */
-void sendToAll(UserArray* user_array, const char* message, int msgType_) {
+_Bool sendToAll(UserArray* user_array, const char* message, int msgType_) {
     int msgType = htonl(msgType_);
     for(int i = 0; i < user_array->counter; i++) {
-        send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0);
-        send(user_array->user_array[i].socket, message, strlen(message) + 1, 0);
+        if(send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0) ||
+           send(user_array->user_array[i].socket, message, strlen(message) + 1, 0)) {
+           return (_Bool)0;
+        };
     }
+
+    return (_Bool)1;
 }
 
+/* TO-DO */
 DWORD WINAPI handleClient(LPVOID paramater) {
     int recv_size = 0;
     char message[BUFFER_LEN];
@@ -72,6 +53,10 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     while((recv_size = recv(param->user->socket, message, sizeof(message) , 0)) != SOCKET_ERROR) {
 
     }
+}
+
+void closeAllSocket(UserArray *ptr){
+    for(unsigned int i = 0; i < ptr->counter; i++) closesocket(ptr->user_array[i].socket);
 }
 
 int main() {
@@ -90,7 +75,7 @@ int main() {
         printf("Could not create socket : %d" , WSAGetLastError());
         return 1;
     }
-    /*
+    /* NON CANCELLARE ROCCIA
     CLEAR_SCREEN();
     printf("Inserisci la porta (%d, %d): ", MIN_PORT, MAX_PORT);
     int server_port = get_int(MIN_PORT, MAX_PORT);
@@ -142,14 +127,18 @@ int main() {
         message[0] = '\0';
         if((recv_size = recv(user_array.user_array[user_array.counter].socket, message, sizeof(message), 0)) == SOCKET_ERROR) {
             printf("recv failed with error code : %d", WSAGetLastError());
+            continue;
         }
         message[recv_size] = '\0';
-        /* controllo se il nickname esiste già*/
+        /* controllo se il nickname esiste gia' */
         if((user_array.counter != 0) && existUsername(&user_array, message)) {
             msgType = htonl(ASTA_MESSAGES);
-            send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0);
-            if(send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0) {
-                puts("Send Failed");
+
+            if (send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0) < 0 ||
+                send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0) {
+
+                closeAllSocket(&user_array);
+                closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
                 return 1;
             }
         }
@@ -159,31 +148,37 @@ int main() {
             strcpy(user_array.user_array[user_array.counter].username, message);
             user_array.user_array[user_array.counter].username[strlen((message)) + 1] = '\0';
 
-            /* stampa sul server il messaggio che il nuovo client si è unito e lo manda anche a tutti i client
-               automaticamente l'ultimo arrivato è escluso dal messaggio perché il counter ancora deve essere incrementato
+            /* stampa sul server il messaggio che il nuovo client si e' unito e lo manda anche a tutti i client
+               automaticamente l'ultimo arrivato e' escluso dal messaggio perche' il counter ancora deve essere incrementato
             */
             printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
             
             char tmp[BUFFER_LEN];
             sprintf(tmp, "Giocatore %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
-            sendToAll(&user_array, tmp, GENERAL_MESSAGE);
+            if(!sendToAll(&user_array, tmp, GENERAL_MESSAGE)) {
+                closeAllSocket(&user_array);
+                closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                return 1;
+            };
 
-            if((user_array.counter + 1) == AstaVariables.min_clients_for_asta) {
-                /* dare il messaggio che l'asta è iniziata */
-                printf("\nAsta Iniziata");
+            if((user_array.counter + 1) == AstaVariables.max_clients) {
+                /* dare il messaggio che l'asta e' iniziata */
+                //sendToAll()
             }
             else {
-                message[recv_size] = '\0';
                 msgType = htonl(ASTA_MESSAGES);
-                send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0);
-                if(send(user_array.user_array[user_array.counter].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
-                    puts("Send Failed");
+                
+                if( send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0) < 0 ||
+                    send(user_array.user_array[user_array.counter].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
+                    
+                    closeAllSocket(&user_array);
+                    closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
                     return 1;
                 }
             }
             user_array.counter++;
         }
-    }   
+    }
 
     closesocket(serverSocket);
     WSACleanup();
