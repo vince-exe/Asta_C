@@ -47,6 +47,11 @@
 #define WAIT_FOR_ASTA "WAIT_FOR_ASTA"
 
 /**
+ * @brief Codice assegnato al messaggio riferito all'inizio dell'asta.
+ */
+#define ASTA_STARTED "ASTA_STARTED"
+
+/**
  * @brief Messaggio inviato dal server al client per indicare che l'asta e' conclusa.
  */
 #define ASTA_CLOSED "ASTA_CLOSED"
@@ -56,17 +61,17 @@
 // **Inizio zona dove si definiscono le costanti relative ai codici dei messaggi del server.**
 
 /**
- * @brief Codice assegnato al messaggio riferito all'asta.
- */
-#define ASTA_MESSAGES 3
-
-/**
  * @brief Codice assegnato al messaggio riferito ad un messaggio generale.
  */
 #define GENERAL_MESSAGE 2
 
 /**
- * @brief Codice assegnato al messaggio riferito ad un messaggio di testo.
+ * @brief Codice assegnato al messaggio riferito all'asta.
+ */
+#define ASTA_MESSAGES 3
+
+/**
+ * @brief Codice assegnato al messaggio riferito ad un messaggio di testing.
  */
 #define TEST_MESSAGE 4
 

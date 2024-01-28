@@ -33,11 +33,13 @@ _Bool existUsername(UserArray* user_array, const char* newNickname) {
 /* manda un messaggio a tutti i client */
 _Bool sendToAll(UserArray* user_array, const char* message, int msgType_) {
     int msgType = htonl(msgType_);
+    printf("\n%d counter: ", user_array->counter);
     for(int i = 0; i < user_array->counter; i++) {
-        if(send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0) ||
-           send(user_array->user_array[i].socket, message, strlen(message) + 1, 0)) {
+        if((send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0) < 0) ||
+           (send(user_array->user_array[i].socket, message, strlen(message) + 1, 0) < 0)) {
            return (_Bool)0;
         };
+        printf("\nSend to all: %s", user_array->user_array[i].username);
     }
 
     return (_Bool)1;
@@ -49,9 +51,9 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     char message[BUFFER_LEN];
     HandleClientParams* param = (HandleClientParams*)paramater;
 
-    printf("\nStart listening thread on %s client", param->user->username);
+    printf("\nStart listening thread on client %s", param->user->username);
     while((recv_size = recv(param->user->socket, message, sizeof(message) , 0)) != SOCKET_ERROR) {
-
+        ;
     }
 }
 
@@ -95,7 +97,7 @@ int main() {
     */
     
     int server_port = 8888;
-    AstaVariables.max_clients = 5; AstaVariables.asta_import = 20;
+    AstaVariables.max_clients = 3; AstaVariables.asta_import = 20;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(server_port);
@@ -108,7 +110,8 @@ int main() {
     printf("Server listening on port %d", server_port);
     /* inizializzo la struttura dati che contiene un array di user ed un counter */
     UserArray user_array = { malloc(sizeof(User) * AstaVariables.max_clients), 0 };
-
+    /* array di thread */
+    
     /* il secondo argomento sono il numero di client che possono stare in coda di connessione prima di essere accettati.*/
     listen(serverSocket, AstaVariables.max_clients);
 
@@ -134,8 +137,8 @@ int main() {
         if((user_array.counter != 0) && existUsername(&user_array, message)) {
             msgType = htonl(ASTA_MESSAGES);
 
-            if (send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0) < 0 ||
-                send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0) {
+            if ((send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0) < 0) ||
+                (send(user_array.user_array[user_array.counter].socket, NICK_ALREADY_IN_USE, strlen(NICK_ALREADY_IN_USE), 0) < 0)) {
 
                 closeAllSocket(&user_array);
                 closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
@@ -153,33 +156,39 @@ int main() {
             */
             printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
             
-            char tmp[BUFFER_LEN];
+            char tmp[255];
             sprintf(tmp, "Giocatore %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
             if(!sendToAll(&user_array, tmp, GENERAL_MESSAGE)) {
                 closeAllSocket(&user_array);
                 closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
                 return 1;
             };
-
-            if((user_array.counter + 1) == AstaVariables.max_clients) {
-                /* dare il messaggio che l'asta e' iniziata */
-                //sendToAll()
+            user_array.counter++;
+            /* il server comunica a tutti i client che l'asta e' iniziata */
+            if(user_array.counter == AstaVariables.max_clients) {
+                if(!sendToAll(&user_array, ASTA_STARTED, ASTA_MESSAGES)) {
+                    closeAllSocket(&user_array);
+                    closeSocket(serverSocket, "Chiusura del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                }
             }
             else {
                 msgType = htonl(ASTA_MESSAGES);
                 
-                if( send(user_array.user_array[user_array.counter].socket, (char*)&msgType, sizeof(msgType), 0) < 0 ||
-                    send(user_array.user_array[user_array.counter].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0) {
+                /* counter - 1 perche' altrimenti andrebbe a scrivere in una posizione errata */
+                if( (send(user_array.user_array[user_array.counter - 1].socket, (char*)&msgType, sizeof(msgType), 0) < 0) ||
+                    (send(user_array.user_array[user_array.counter - 1].socket, WAIT_FOR_ASTA, strlen(WAIT_FOR_ASTA) + 1, 0) < 0)) {
                     
                     closeAllSocket(&user_array);
                     closeSocket(serverSocket, "Chiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
                     return 1;
                 }
             }
-            user_array.counter++;
         }
     }
-
+    while(1){
+        ;
+    }
+    printf("\nServer uscito dwal ciclo..");
     closesocket(serverSocket);
     WSACleanup();
     return 0;
