@@ -13,15 +13,15 @@
  * @return int: Il numero inserito.
  */
 int get_int(const int min, const int max) {
-    char buffer[10];
-    int n;
-    
+    char buffer[(char)11];
+    int n = (int)0;
+
     do {
-        fgets(buffer, 10, stdin);
-        buffer[strlen(buffer) - 1] = '\0';
+        fgets(buffer, sizeof(buffer), stdin);
+        buffer[strlen(buffer) - (int)1] = (char)'\0';
         n = atoi(buffer);
     } while(n < min || n > max);
-
+    
     return n;
 }
 
@@ -38,4 +38,25 @@ void closeSocket(SOCKET socket, const char* message, const char* file_, const in
     closesocket(socket);
     WSACleanup();
     return;
+}
+
+/**
+ * @brief Funzione che stampa un messaggio e chiude il socket.
+ *
+ * @param client: Il socket a cui verra' mandato intero.
+ * @param integer: Stringa da mandare.
+ * @param msgType_: Tipo del messaggio.
+ *
+ * @return 0: Se hanno fallito.
+ * @return 1: Se e' andato tutto a buon fine.
+ */
+_Bool sendTo(SOCKET client, const char* message, int msgType_) {
+    int msgType = htonl(msgType_); 
+
+    if((send(client, (char*)&msgType, sizeof(msgType), 0) < 0) ||
+       (send(client, message, strlen(message) + 1, 0) < 0)) {
+        return (_Bool)0;
+    };
+
+    return (_Bool)1;
 }

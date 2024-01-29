@@ -56,11 +56,23 @@ int get_int(const int min, const int max);
 /**
  * @brief Funzione che stampa un messaggio e chiude il socket.
  *
- * @param socket: Numero piu' piccolo che si puo' inserire.
+ * @param socket: Socket da chiudere.
  * @param message: Messaggio da stampare.
  * @param file_: File.
  * @param line_: Linea di codice.
  */
 void closeSocket(SOCKET socket, const char* message, const char* file_, const int line_);
+
+/**
+ * @brief Funzione che stampa un messaggio e chiude il socket.
+ *
+ * @param client: Il socket a cui verra' mandato intero.
+ * @param integer: Stringa da mandare.
+ * @param msgType_: Tipo del messaggio.
+ *
+ * @return 0: Se hanno fallito.
+ * @return 1: Se e' andato tutto a buon fine.
+ */
+_Bool sendTo(SOCKET client, const char* message, int msgType_);
 
 #endif // FUNCTIONS_H

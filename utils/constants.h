@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <limits.h>
+
 /**
  * @brief Numero minimo di client per iniziare l'asta.
  */
@@ -68,12 +70,17 @@
 /**
  * @brief Codice assegnato al messaggio riferito all'asta.
  */
-#define ASTA_MESSAGES 3
+#define ASTA_STATUS 3
+
+/**
+ * @brief Codice assegnato al messaggio riferito ai messaggi per quando l'asta ha inizio
+ */
+#define ASTA_MESSAGE 4
 
 /**
  * @brief Codice assegnato al messaggio riferito ad un messaggio di testing.
  */
-#define TEST_MESSAGE 4
+#define TEST_MESSAGE 7
 
 // **Fine zona dove si definiscono le costanti relative ai codici dei messaggi del server.**
 

@@ -40,7 +40,7 @@ int checkNickname(SOCKET socketClient, const char* nickname) {
     }
     // Normalizza l'ordine dei byte del numero per adeguarlo a una convenzione generalmente accettata
     typeOfMsg = ntohl(typeOfMsg);
-    if(typeOfMsg != ASTA_MESSAGES) {
+    if(typeOfMsg != ASTA_STATUS) {
         closeSocket(socketClient, "Fatal Error ( message != ASTA_MESSAGES)", __FILE__, __LINE__);
         return 0;
     }
@@ -60,13 +60,19 @@ int checkNickname(SOCKET socketClient, const char* nickname) {
         printf("\nIn attesa di altri client per iniziare l'asta :).");
         return 1;
     }
-    return 1;
+    else if(strcmp(message, ASTA_STARTED) == 0) {
+        printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]");
+        return 1;
+    }
+
+    return 0;
 }
 
-void asta_client(SOCKET socketClient) {
+void asta_client(SOCKET socketClient, const char* nickname) {
     char tmp[255];
     char message[BUFFER_LEN];
-    int recv_size, typeOfMsg;
+    int recv_size, typeOfMsg, astaImport, varImport;
+    SendAsta sendAsta;
 
     do {
         message[0] = '\0';
@@ -76,29 +82,42 @@ void asta_client(SOCKET socketClient) {
             return;
         }
         typeOfMsg = ntohl(typeOfMsg);
-        /* ricevo il messaggio */
-        if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
-            closeSocket(socketClient, "Receive error", __FILE__, __LINE__);
-            return;
+
+        if(typeOfMsg == ASTA_MESSAGE) {
+            recv(socketClient, (char*)&sendAsta, sizeof(SendAsta), 0);
         }
-        message[recv_size] = '\0';
+        /* ricevo il messaggio char normale */
+        else {    
+            if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
+                closeSocket(socketClient, "\nReceive error", __FILE__, __LINE__);
+                return;
+            }
+            message[recv_size] = '\0';
+        }
 
         switch(typeOfMsg) {
             case GENERAL_MESSAGE:
                 printf("\n%s", message);
                 break;
 
-            case ASTA_MESSAGES:
-                if(strcmp(message, ASTA_CLOSED) == 0) {
-                    /* TO-DO */
+            case ASTA_STATUS:
+                if(strcmp(message, ASTA_CLOSED) == (_Bool)0) {
+                    printf("CIAOOOOOOOOOOOOOOOO");
+                    return;
                 }
-                else if(strcmp(message, ASTA_STARTED) == 0) {
+                else if(strcmp(message, ASTA_STARTED) == (_Bool)0) {
                     printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]");
                 }
                 break;
 
+            case ASTA_MESSAGE:
+                printf("\nFrase: %s", sendAsta.message_turn);
+                printf("\nImporto: %d", sendAsta.import);
+                printf("\nTurno Giocatore: %s", sendAsta.nickname_turn);
+                break;
+
             default:
-                sprintf(tmp, "Unidentified message: %d", typeOfMsg);
+                sprintf(tmp, "\nUnidentified message: %d", typeOfMsg);
                 closeSocket(socketClient, tmp, __FILE__, __LINE__);
                 return;
         }
@@ -150,7 +169,7 @@ int main(int argc , char *argv[]) {
         return 1;
     }
 
-    asta_client(socketClient);
+    asta_client(socketClient, nickname);
 
     closesocket(socketClient);
     WSACleanup();

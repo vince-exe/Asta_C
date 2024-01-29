@@ -43,7 +43,20 @@ typedef struct UserArray {
 typedef struct AstaVariables {
     int max_clients;
     int asta_import;
+    int asta_turn;
 } AstaVariables;
+
+/* 
+ * Definizione di un tipo chiamato 'SendAsta' che rappresenta i parametri che il server passa al client.
+ * import: Importo a cui sta attualmente l'asta.
+ * nickname_turn: Nickname dell'utante a cui tocca impostare una nuova cifra.
+ * message_turn: Messaggio del sever.
+ */
+typedef struct SendAsta {
+    int import;
+    char nickname_turn[255];
+    char message_turn[255];
+}SendAsta;
 
 /* 
  * Definizione di un tipo chiamato 'HandleClientParams' che rappresenta i parametri del thread.
