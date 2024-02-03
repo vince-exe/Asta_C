@@ -14,7 +14,7 @@
  */
 int get_int(const int min, const int max) {
     char buffer[(char)11];
-    int n = (int)0;
+    int n = 0;
 
     do {
         fgets(buffer, sizeof(buffer), stdin);
@@ -34,7 +34,7 @@ int get_int(const int min, const int max) {
  * @param line_: Linea di codice.
  */
 void closeSocket(SOCKET socket, const char* message, const char* file_, const int line_) {
-    printf("%s  %s  %d", message, file_, line_);
+    fprintf(stderr, "%s  %s  %d", message, file_, line_);
     closesocket(socket);
     WSACleanup();
     return;

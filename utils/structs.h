@@ -64,6 +64,13 @@ typedef struct SendAsta {
  */
 typedef struct HandleClientParams {
     User* user;
+    UserArray* user_array;
+    SOCKET socketServer;
 }HandleClientParams;
+
+typedef struct InputClient {
+    int msgType;
+    int import;
+}InputClient;
 
 #endif // STRUCTS_H

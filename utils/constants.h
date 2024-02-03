@@ -77,6 +77,8 @@
  */
 #define ASTA_MESSAGE 4
 
+#define ASTA_IMPORT 5
+
 /**
  * @brief Codice assegnato al messaggio riferito ad un messaggio di testing.
  */

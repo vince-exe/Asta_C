@@ -11,6 +11,14 @@
 
 #pragma comment(lib,"ws2_32.lib") // linka automaticamente la libreria in fase di runtime.
 
+
+void closeAllSocket(UserArray *ptr){
+    for(size_t i = 0; i < ptr->counter; i++){
+        closesocket(ptr->user_array[i].socket);
+        free(ptr->user_array[i].username);
+    }
+}
+
 /**
  * @brief Funzione che controlla se l'username e' gia' presente tra i vari client.
  *
@@ -59,40 +67,42 @@ _Bool sendToAll(UserArray* user_array, const char* message, int msgType_) {
     return (_Bool)1;
 }
 
-
 DWORD WINAPI handleClient(LPVOID paramater) {
-    int recv_size = 0, typeOfMsg;
-    char message[BUFFER_LEN];
+    int recv_size = 0, typeOfMsg = 0, clientImport = 0, isRunning = 1;
+    char tmp[BUFFER_LEN];
     HandleClientParams* param = (HandleClientParams*)paramater;
+    InputClient inputClient;
 
-    printf("\nStart listening thread on client %s", param->user->username);
-    while(1) {
-        message[0] = '\0';
-        /* ricevo il tipo di messaggio */
-        if((recv_size = recv(param->user->socket, (char*)&typeOfMsg, sizeof(typeOfMsg), 0)) == SOCKET_ERROR) {
-            closeSocket(param->user->socket, "\nReceive error Thread", __FILE__, __LINE__);
-            return 0;
-        }
-        typeOfMsg = ntohl(typeOfMsg);
-        /* ricevo il messaggio */
-        if((recv_size = recv(param->user->socket, message, sizeof(message) , 0)) == SOCKET_ERROR) {
-            closeSocket(param->user->socket, "\nReceive error Thread", __FILE__, __LINE__);
-            return 0;
-        }
+    /* qui ci salviamo l'utente attuale essendo che paramater cambia ogni volta */
+    User currentUser = *param->user;
+    
+    printf("\nStart listening thread on client %s\n", currentUser.username);
+    while(isRunning) {
+        /* ricevere la struttura */
+        recv(param->user->socket, (char*)&inputClient, sizeof(InputClient), 0);
 
-        switch(typeOfMsg) {
-            ;
+        switch(inputClient.msgType) {
+            /* il server riceve l'importo dal client ( lo casta ad intero )*/
+            case ASTA_IMPORT:
+                sprintf(tmp, "Il giocatore %s ha puntato %d", currentUser.username, inputClient.import);
+                printf("\n%s", tmp); 
+                sendToAll(param->user_array, tmp, GENERAL_MESSAGE);
+
+                /* TODO: mandare il prossimo turno*/
+                break;
+            
+            default:
+                closeAllSocket(param->user_array);
+
+                sprintf(tmp, "Messaggio dal client non identificato %d", typeOfMsg);
+                closeSocket(param->socketServer, tmp, __FILE__, __LINE__);
+                isRunning = 0;
+                break;
         }
     }
 
-    printf("\nEnd thread on client %s", param->user->username);
+    printf("\nEnd thread on client %s", currentUser.username);
     return 0;
-}
-
-void closeAllSocket(UserArray *ptr){
-    for(size_t i = 0; i < ptr->counter; i++){
-        closesocket(ptr->user_array[i].socket);
-    }
 }
 
 int main() {
@@ -103,12 +113,12 @@ int main() {
     AstaVariables AstaVariables;
 
     if (WSAStartup(MAKEWORD(2,2),&wsa) != 0) {
-        printf("\nFailed. Error Code : %d",WSAGetLastError());
+        fprintf(stderr, "\nFailed. Error Code : %d",WSAGetLastError());
         return 1;
     }
     
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-        printf("\nCould not create socket : %d" , WSAGetLastError());
+        fprintf(stderr, "\nCould not create socket : %d" , WSAGetLastError());
         return 1;
     }
     /* NON CANCELLARE ROCCIA
@@ -137,7 +147,7 @@ int main() {
     server.sin_port = htons(server_port);
 
     if (bind(serverSocket, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR) {
-        printf("\nBind failed with error code : %d" , WSAGetLastError());
+        fprintf(stderr, "\nBind failed with error code : %d" , WSAGetLastError());
         return 1;
     }
     
@@ -159,13 +169,13 @@ int main() {
         user_array.user_array[user_array.counter].socket = accept(serverSocket, (struct sockaddr *)&client, &c);
 
         if (user_array.user_array[user_array.counter].socket == INVALID_SOCKET) {
-            printf("\naccept failed with error code : %d" , WSAGetLastError());
+            fprintf(stderr, "\naccept failed with error code : %d" , WSAGetLastError());
             return 1;
         }
 
         message[0] = '\0';
         if((recv_size = recv(user_array.user_array[user_array.counter].socket, message, sizeof(message), 0)) == SOCKET_ERROR) {
-            printf("\nrecv failed with error code : %d", WSAGetLastError());
+            fprintf(stderr, "\nrecv failed with error code : %d", WSAGetLastError());
             continue;
         }
         message[recv_size] = '\0';
@@ -201,7 +211,7 @@ int main() {
                 return 1;
             };
             /* dichiaro ed inizializzo ogni volta la variabile params che punta al singolo utente e poi la passo al thread*/
-            HandleClientParams params = {&user_array.user_array[user_array.counter]};
+            HandleClientParams params = {&user_array.user_array[user_array.counter], &user_array, serverSocket};
 
             /* aggiungo al vettore di thread il singolo thread che gestira' il client */
             thread_array[user_array.counter] = CreateThread(NULL, 0, handleClient, &params, 0, NULL);
@@ -247,14 +257,13 @@ int main() {
     
     sendToAllAsta(&user_array, &sendAsta, ASTA_MESSAGE);
 
-    /* FINE TEMP TEST */
-
     WaitForMultipleObjects(user_array.counter, thread_array, TRUE, INFINITE);
+    printf("\nServer ha finito di aspettare per tutti i thread");
     for (int i = 0; i < user_array.counter; i++) {
         CloseHandle(thread_array[i]);
     }
     printf("\nAsta Finita");
-
+    
     closesocket(serverSocket);
     WSACleanup();
     return 0;

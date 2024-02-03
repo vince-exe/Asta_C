@@ -25,6 +25,14 @@
 
 #pragma comment(lib,"ws2_32.lib") // linka automaticamente la libreria in fase di runtime.
 
+_Bool sendToServer(SOCKET client, InputClient* inputClient) {
+    if((send(client, (char*)inputClient, sizeof(SendAsta), 0) < 0)) {
+        return (_Bool)0;
+    }
+    
+    return 1;
+}
+
 int checkNickname(SOCKET socketClient, const char* nickname) {
     char message[BUFFER_LEN];
     int recv_size, typeOfMsg;
@@ -61,7 +69,7 @@ int checkNickname(SOCKET socketClient, const char* nickname) {
         return 1;
     }
     else if(strcmp(message, ASTA_STARTED) == 0) {
-        printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]");
+        printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]\n");
         return 1;
     }
 
@@ -71,8 +79,9 @@ int checkNickname(SOCKET socketClient, const char* nickname) {
 void asta_client(SOCKET socketClient, const char* nickname) {
     char tmp[255];
     char message[BUFFER_LEN];
-    int recv_size, typeOfMsg, astaImport, varImport;
+    int recv_size, typeOfMsg, astaImport;
     SendAsta sendAsta;
+    InputClient inputClient;
 
     do {
         message[0] = '\0';
@@ -101,19 +110,30 @@ void asta_client(SOCKET socketClient, const char* nickname) {
                 break;
 
             case ASTA_STATUS:
-                if(strcmp(message, ASTA_CLOSED) == (_Bool)0) {
+                if(strcmp(message, ASTA_CLOSED) == 0) {
                     printf("CIAOOOOOOOOOOOOOOOO");
                     return;
                 }
-                else if(strcmp(message, ASTA_STARTED) == (_Bool)0) {
-                    printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]");
+                else if(strcmp(message, ASTA_STARTED) == 0) {
+                    printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]\n");
                 }
                 break;
 
             case ASTA_MESSAGE:
-                printf("\nFrase: %s", sendAsta.message_turn);
-                printf("\nImporto: %d", sendAsta.import);
-                printf("\nTurno Giocatore: %s", sendAsta.nickname_turn);
+                /* se tocca al client, puo' inserire l'importo */
+                if(strcmp(sendAsta.nickname_turn, nickname) == 0) {
+                    printf("\nTocca a te, inserisci l'importo (ultimo %d): ", sendAsta.import);
+                    inputClient.import = get_int(sendAsta.import, INT_MAX);
+                    inputClient.msgType = ASTA_IMPORT;
+
+                    if(!sendToServer(socketClient, &inputClient)) {
+                        closeSocket(socketClient, "Il client ha fallito nell'invio del messaggio al server", __FILE__, __LINE__);
+                        return;
+                    }
+                }
+                else {
+                    printf("\n%s", sendAsta.message_turn);
+                }
                 break;
 
             default:
