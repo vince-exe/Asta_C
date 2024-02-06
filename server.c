@@ -38,18 +38,16 @@ _Bool existUsername(UserArray* user_array, const char* newNickname) {
     return (_Bool)0;
 }
 
-_Bool sendToAllAsta(UserArray* user_array, SendAsta* dati, int msgType_) {
+_Bool sendToAllAsta(UserArray* user_array, SendAsta* data, int msgType_) {
     int msgType = htonl(msgType_);
 
     for (int i = 0; i < user_array->counter; i++) {
         if ((send(user_array->user_array[i].socket, (char*)&msgType, sizeof(msgType), 0) < 0) ||
-            (send(user_array->user_array[i].socket, (char*)dati, sizeof(SendAsta), 0) < 0)) {
-            free(dati->nickname_turn); // Libera la memoria allocata per nickname_turn
+            (send(user_array->user_array[i].socket, (char*)data, sizeof(SendAsta), 0) < 0)) {
             return (_Bool)0;
         }
     }
 
-    //free(dati->nickname_turn); // Libera la memoria allocata per nickname_turn
     return (_Bool)1;
 }
 
@@ -67,28 +65,90 @@ _Bool sendToAll(UserArray* user_array, const char* message, int msgType_) {
     return (_Bool)1;
 }
 
+int get_pos(UserArray* user_array, const char* username) {
+    for(int i = 0; i < user_array->counter; i++) {
+        if(strcmp(user_array->user_array[i].username, username) == 0) {
+            return i;
+        }
+    }
+
+    return (-1);
+}
+
+void shiftArray(UserArray* user_array, const char* username) {
+    int pos = get_pos(user_array, username);
+    for(int i = pos; i < user_array->counter; i++) {
+        user_array->user_array[i] = user_array->user_array[i + 1];
+    }
+    free(&user_array->user_array[user_array->counter - 1]);
+    user_array->counter--;
+}
+
+_Bool handleTurn(HandleClientParams* param, SendAsta* sendAsta) {    
+    /* controlliamo che non sfori la dimensione dell'array mantenendop il turno dei giocatori */
+    if(param->astaVariables->asta_turn >= (param->user_array->counter - 1)) {
+        param->astaVariables->asta_turn = 0;
+    }
+    else {
+        param->astaVariables->asta_turn++;
+    }
+    printf("\nTurno del giocatore: %d", param->astaVariables->asta_turn);
+
+    sendAsta->import = param->astaVariables->asta_import;
+    sprintf(sendAsta->message_turn, "Turno del giocatore [ %s ]", param->user_array->user_array[param->astaVariables->asta_turn].username);
+    strncpy(sendAsta->nickname_turn, param->user_array->user_array[param->astaVariables->asta_turn].username, BUFFER_LEN);
+    
+    return sendToAllAsta(param->user_array, sendAsta, ASTA_MESSAGE);
+}
+
 DWORD WINAPI handleClient(LPVOID paramater) {
     int recv_size = 0, typeOfMsg = 0, clientImport = 0, isRunning = 1;
     char tmp[BUFFER_LEN];
-    HandleClientParams* param = (HandleClientParams*)paramater;
-    InputClient inputClient;
 
+    /* struttura dati che ci fa gestire i parametri passati al thread */
+    HandleClientParams* param = (HandleClientParams*)paramater;
+    /* struttura dati che conterrà l'input del socket */
+    InputClient inputClient;
+    SendAsta sendAsta;
     /* qui ci salviamo l'utente attuale essendo che paramater cambia ogni volta */
     User currentUser = *param->user;
     
     printf("\nStart listening thread on client %s\n", currentUser.username);
     while(isRunning) {
         /* ricevere la struttura */
-        recv(param->user->socket, (char*)&inputClient, sizeof(InputClient), 0);
+        if(recv(param->user->socket, (char*)&inputClient, sizeof(InputClient), 0) == SOCKET_ERROR) {
+            sprintf(tmp, "Il giocatore %s ha abbandonato l'asta", currentUser.username);
+            printf("\n%s", tmp);
+
+            /* mandiamo il messaggio di quit */
+            if(!sendToAll(param->user_array, tmp, GENERAL_MESSAGE)) {
+                closeAllSocket(param->user_array);
+                closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                return 1;
+            }
+            /* shiftare l'utente */
+            shiftArray(param->user_array, currentUser.username);
+            return 0;
+        }
 
         switch(inputClient.msgType) {
             /* il server riceve l'importo dal client ( lo casta ad intero )*/
             case ASTA_IMPORT:
                 sprintf(tmp, "Il giocatore %s ha puntato %d", currentUser.username, inputClient.import);
                 printf("\n%s", tmp); 
-                sendToAll(param->user_array, tmp, GENERAL_MESSAGE);
-
-                /* TODO: mandare il prossimo turno*/
+                if(!sendToAll(param->user_array, tmp, GENERAL_MESSAGE)) {
+                    closeAllSocket(param->user_array);
+                    closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                    return 1;
+                }
+                
+                /* aggiorniamo l'importo dell'asta e mandiamo il prossimo turno */
+                param->astaVariables->asta_import = inputClient.import;
+                if(!handleTurn(param, &sendAsta)) {
+                    closeAllSocket(param->user_array);
+                    closeSocket(param->socketServer, "\nIl server ha fallito nel mandare il messaggio di turno, There is nothing we can do...", __FILE__, __LINE__);
+                    return 1;
+                }
                 break;
             
             default:
@@ -102,7 +162,7 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     }
 
     printf("\nEnd thread on client %s", currentUser.username);
-    return 0;
+    return (DWORD)0;
 }
 
 int main() {
@@ -119,6 +179,7 @@ int main() {
     
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
         fprintf(stderr, "\nCould not create socket : %d" , WSAGetLastError());
+        WSACleanup();
         return 1;
     }
     /* NON CANCELLARE ROCCIA
@@ -148,6 +209,7 @@ int main() {
 
     if (bind(serverSocket, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR) {
         fprintf(stderr, "\nBind failed with error code : %d" , WSAGetLastError());
+        WSACleanup();
         return 1;
     }
     
@@ -167,9 +229,9 @@ int main() {
     
     while(user_array.counter < AstaVariables.max_clients) {
         user_array.user_array[user_array.counter].socket = accept(serverSocket, (struct sockaddr *)&client, &c);
-
         if (user_array.user_array[user_array.counter].socket == INVALID_SOCKET) {
             fprintf(stderr, "\naccept failed with error code : %d" , WSAGetLastError());
+            WSACleanup();
             return 1;
         }
 
@@ -188,6 +250,7 @@ int main() {
 
                 closeAllSocket(&user_array);
                 closeSocket(serverSocket, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                WSACleanup();
                 return 1;
             }
         }
@@ -208,10 +271,11 @@ int main() {
             if(!sendToAll(&user_array, tmp, GENERAL_MESSAGE)) {
                 closeAllSocket(&user_array);
                 closeSocket(serverSocket, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+                WSACleanup();
                 return 1;
             };
             /* dichiaro ed inizializzo ogni volta la variabile params che punta al singolo utente e poi la passo al thread*/
-            HandleClientParams params = {&user_array.user_array[user_array.counter], &user_array, serverSocket};
+            HandleClientParams params = {&user_array.user_array[user_array.counter], &user_array, &AstaVariables, serverSocket};
 
             /* aggiungo al vettore di thread il singolo thread che gestira' il client */
             thread_array[user_array.counter] = CreateThread(NULL, 0, handleClient, &params, 0, NULL);
@@ -220,6 +284,7 @@ int main() {
                 char tmp[BUFFER_LEN];
                 sprintf(tmp, "\nErrore nella creazione del thread utente %s", user_array.user_array[user_array.counter].username);
                 closeSocket(serverSocket, tmp, __FILE__, __LINE__);
+                WSACleanup();
                 return 1;
             }
             user_array.counter++;
@@ -241,6 +306,9 @@ int main() {
 
                     closeAllSocket(&user_array);
                     closeSocket(serverSocket, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
+
+                    closesocket(serverSocket);
+                    WSACleanup();
                     return 1;
                 }
             }
@@ -253,9 +321,13 @@ int main() {
 
     sendAsta.import = AstaVariables.asta_import;
     sprintf(sendAsta.message_turn, "Turno del giocatore [ %s ]", user_array.user_array[AstaVariables.asta_turn].username);
-    strcpy(sendAsta.nickname_turn, user_array.user_array[AstaVariables.asta_turn].username);
+    strncpy(sendAsta.nickname_turn, user_array.user_array[AstaVariables.asta_turn].username, (size_t)BUFFER_LEN);
     
-    sendToAllAsta(&user_array, &sendAsta, ASTA_MESSAGE);
+    if(!sendToAllAsta(&user_array, &sendAsta, ASTA_MESSAGE)) {
+        closeAllSocket(&user_array);
+        closeSocket(serverSocket, "Il server ha fallito nel mandare il messaggio di turno, There is nothing we can do..., ", __FILE__, __LINE__);
+        system("start https://www.youtube.com/watch?v=F0Gkr4MBEO0?autoplay=1");
+    }
 
     WaitForMultipleObjects(user_array.counter, thread_array, TRUE, INFINITE);
     printf("\nServer ha finito di aspettare per tutti i thread");

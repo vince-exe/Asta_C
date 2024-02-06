@@ -65,6 +65,7 @@ typedef struct SendAsta {
 typedef struct HandleClientParams {
     User* user;
     UserArray* user_array;
+    AstaVariables* astaVariables;
     SOCKET socketServer;
 }HandleClientParams;
 

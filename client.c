@@ -87,7 +87,8 @@ void asta_client(SOCKET socketClient, const char* nickname) {
         message[0] = '\0';
         /* ricevo il tipo di messaggio */
         if((recv_size = recv(socketClient, (char*)&typeOfMsg, sizeof(typeOfMsg), 0)) == SOCKET_ERROR) {
-            closeSocket(socketClient, "Receive error", __FILE__, __LINE__);
+            printf("\n%d", WSAGetLastError());
+            closeSocket(socketClient, "\nReceive error", __FILE__, __LINE__);
             return;
         }
         typeOfMsg = ntohl(typeOfMsg);
@@ -123,7 +124,7 @@ void asta_client(SOCKET socketClient, const char* nickname) {
                 /* se tocca al client, puo' inserire l'importo */
                 if(strcmp(sendAsta.nickname_turn, nickname) == 0) {
                     printf("\nTocca a te, inserisci l'importo (ultimo %d): ", sendAsta.import);
-                    inputClient.import = get_int(sendAsta.import, INT_MAX);
+                    inputClient.import = get_int(sendAsta.import + 1, INT_MAX);
                     inputClient.msgType = ASTA_IMPORT;
 
                     if(!sendToServer(socketClient, &inputClient)) {
