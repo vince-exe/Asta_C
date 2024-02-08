@@ -53,14 +53,14 @@
 #define WAIT_FOR_ASTA "WAIT_FOR_ASTA"
 
 /**
- * @brief Codice assegnato al messaggio riferito all'inizio dell'asta.
+ * @brief Messaggio riferito all'inizio dell'asta.
  */
 #define ASTA_STARTED "ASTA_STARTED"
 
 /**
- * @brief Messaggio inviato dal server al client per indicare che l'asta e' conclusa.
+ * @brief Messaggio riferito all'inizio dell'asta.
  */
-#define ASTA_CLOSED "ASTA_CLOSED"
+#define ASTA_WON "ASTA_WON"
 
 // **Fine zona dove si definiscono le costanti relativi ai codici Output dell server**
 
@@ -82,6 +82,8 @@
 #define ASTA_MESSAGE 4
 
 #define ASTA_IMPORT 5
+
+#define ASTA_WON_FROM_CLIENT 6
 
 /**
  * @brief Codice assegnato al messaggio riferito ad un messaggio di testing.

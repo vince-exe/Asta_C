@@ -36,12 +36,12 @@ typedef struct UserArray {
 
 /* 
  * Definizione di un tipo chiamato 'AstaVariables' che rappresenta le variabili di un'asta.
- * min_clients: Numero minimo di client per avviare l'asta.
- * max_clients: Numero massimo di client per l'asta.
+ * num_clients: Numero client per avviare l'asta.
  * asta_import: Importo iniziale dell'asta.
+ * asta_turn: Turno dell'asta.
  */
 typedef struct AstaVariables {
-    size_t max_clients;
+    size_t num_clients;
     size_t asta_import;
     size_t asta_turn;
 } AstaVariables;

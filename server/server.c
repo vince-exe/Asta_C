@@ -59,29 +59,42 @@
  */
 #pragma comment(lib,"ws2_32.lib") // Collega la libreria in fase di runtime.
 
-_Bool handleTurn(HandleClientParams* param, SendAsta* sendAsta) {    
-    if(param->astaVariables->asta_turn >= (param->user_array->counter - 1)) {
-        param->astaVariables->asta_turn = 0;
+_Bool handleTurn(HandleClientParams* param, SendAsta* sendAsta, _Bool check) {    
+    if(param == NULL || sendAsta == NULL) {
+        return (_Bool)0;
+    }
+
+    if(check) {
+        if(param->astaVariables->asta_turn >= (param->user_array->counter - 1)) {
+            param->astaVariables->asta_turn = 0;
+        }
+        else {
+            param->astaVariables->asta_turn++;
+        }
     }
     else {
-        param->astaVariables->asta_turn++;
+        /* in caso l'ultimo quitta, parte dal primo */
+        if(param->astaVariables->asta_turn >= (param->user_array->counter)) {
+            param->astaVariables->asta_turn = 0;
+        }
     }
+
     printf("\nTurno del giocatore: %d", param->astaVariables->asta_turn);
 
     sendAsta->import = param->astaVariables->asta_import;
     sprintf(sendAsta->message_turn, "Turno del giocatore [ %s ]", param->user_array->user_array[param->astaVariables->asta_turn].username);
     strncpy(sendAsta->nickname_turn, param->user_array->user_array[param->astaVariables->asta_turn].username, BUFFER_LEN);
-    
+
     return sendToAllAsta(param->user_array, sendAsta, ASTA_MESSAGE);
 }
 
 DWORD WINAPI handleClient(LPVOID paramater) {
     int recv_size = 0, typeOfMsg = 0, clientImport = 0, isRunning = 1;
     char tmp[BUFFER_LEN];
-
+    
     /* struttura dati che ci fa gestire i parametri passati al thread */
     HandleClientParams* param = (HandleClientParams*)paramater;
-    /* struttura dati che conterrà l'input del socket */
+    /* struttura dati che conterra' l'input del socket */
     InputClient inputClient;
     SendAsta sendAsta;
     /* qui ci salviamo l'utente attuale essendo che paramater cambia ogni volta */
@@ -94,18 +107,35 @@ DWORD WINAPI handleClient(LPVOID paramater) {
             sprintf(tmp, "Il giocatore %s ha abbandonato l'asta", currentUser.username);
             printf("\n%s", tmp);
 
-            /* mandiamo il messaggio di quit */
-            if(!sendToAll(param->user_array, tmp, GENERAL_MESSAGE)) {
-                closeAllSocket(param->user_array);
-                closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
-                return 1;
-            }
-            
             /* shiftare l'utente */
             if(!shiftArray(param->user_array, currentUser.username)){
                 closeAllSocket(param->user_array);
                 closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di incongruenza", __FILE__, __LINE__);
             }
+
+            /* mandiamo il messaggio di quit */
+            if(!sendToAll(param->user_array, tmp, GENERAL_MESSAGE)) {
+                closeAllSocket(param->user_array);
+                closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di spedizione ( client quit )", __FILE__, __LINE__);
+                return 1;
+            }
+            
+            if(param->user_array->counter == 1) {
+                sprintf(tmp, ASTA_WON);
+                if(!sendToAll(param->user_array, tmp, ASTA_STATUS)) {
+                    closeAllSocket(param->user_array);
+                    closeSocket(param->socketServer, "\nChiususa del server dovuta ad errore di spedizione ( client won )", __FILE__, __LINE__);
+                    return 1;
+                }
+            }
+
+            if(!handleTurn(param, &sendAsta, 0)) {
+                closeAllSocket(param->user_array);
+                closeSocket(param->socketServer, "\nIl server ha fallito nel mandare il messaggio di turno, There is nothing we can do...", __FILE__, __LINE__);
+                return 1;
+            }
+
+            printf("\nEnd thread on client %s", currentUser.username);
             return 0;
         }
 
@@ -122,13 +152,18 @@ DWORD WINAPI handleClient(LPVOID paramater) {
                 
                 /* aggiorniamo l'importo dell'asta e mandiamo il prossimo turno */
                 param->astaVariables->asta_import = inputClient.import;
-                if(!handleTurn(param, &sendAsta)) {
+                if(!handleTurn(param, &sendAsta, 1)) {
                     closeAllSocket(param->user_array);
                     closeSocket(param->socketServer, "\nIl server ha fallito nel mandare il messaggio di turno, There is nothing we can do...", __FILE__, __LINE__);
                     return 1;
                 }
+
                 break;
             
+            case ASTA_WON_FROM_CLIENT:
+                isRunning = 0;
+                break;
+
             default:
                 closeAllSocket(param->user_array);
 
@@ -160,27 +195,21 @@ int main() {
         WSACleanup();
         return 1;
     }
-    /* NON CANCELLARE ROCCIA
+
     CLEAR_SCREEN();
     printf("Inserisci la porta (%d, %d): ", MIN_PORT, MAX_PORT);
     int server_port = get_int(MIN_PORT, MAX_PORT);
     CLEAR_SCREEN();
 
     printf("\nInserisci il numero di client (%d, %d): ", MIN_CLIENT, MAX_CLIENT);
-    AstaVariables.max_clients = get_int(MIN_CLIENT, MAX_CLIENT);
-    CLEAR_SCREEN();
-
-    printf("\nInserisci il numero minimo di client per iniziare l'asta (%d, %d): ", MIN_CLIENT, MAX_CLIENT);
-    AstaVariables.min_clients_for_asta = get_int(MIN_CLIENT, MAX_CLIENT);
+    AstaVariables.num_clients = get_int(MIN_CLIENT, MAX_CLIENT);
     CLEAR_SCREEN();
 
     printf("\nInserisci l'importo di partenza dell'asta (min: %d): ", MIN_ASTA);
     AstaVariables.asta_import = get_int(MIN_ASTA, MAX_PORT);
+    AstaVariables.asta_turn = 0;
     CLEAR_SCREEN();
-    */
 
-    int server_port = 8888;
-    AstaVariables.max_clients = 3; AstaVariables.asta_import = 20; AstaVariables.asta_turn = 0;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(server_port);
@@ -194,18 +223,18 @@ int main() {
     CLEAR_SCREEN();
     printf("Server listening on port %d", server_port);
     /* inizializzo la struttura dati che contiene un array di user ed un counter */
-    UserArray user_array = { malloc(sizeof(User) * AstaVariables.max_clients), 0 };
+    UserArray user_array = { malloc(sizeof(User) * AstaVariables.num_clients), 0 };
     /* array di thread */
-    HANDLE *thread_array = malloc(sizeof(HANDLE) * AstaVariables.max_clients);
+    HANDLE *thread_array = malloc(sizeof(HANDLE) * AstaVariables.num_clients);
 
     /* il secondo argomento sono il numero di client che possono stare in coda di connessione prima di essere accettati.*/
-    listen(serverSocket, AstaVariables.max_clients);
+    listen(serverSocket, AstaVariables.num_clients);
 
     int c = sizeof(struct sockaddr_in);
     int recv_size, msgType;
     char message[BUFFER_LEN];
     
-    while(user_array.counter < AstaVariables.max_clients) {
+    while(user_array.counter < AstaVariables.num_clients) {
         user_array.user_array[user_array.counter].socket = accept(serverSocket, (struct sockaddr *)&client, &c);
         if (user_array.user_array[user_array.counter].socket == INVALID_SOCKET) {
             fprintf(stderr, "\naccept failed with error code : %d" , WSAGetLastError());
@@ -242,10 +271,10 @@ int main() {
                 stampa sul server il messaggio che il nuovo client si e' unito e lo manda anche a tutti i client
                 automaticamente l'ultimo arrivato e' escluso dal messaggio perche' il counter ancora deve essere incrementato
             */
-            printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
+            printf("\nClient %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.num_clients);
 
             char tmp[255];
-            sprintf(tmp, "Giocatore %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.max_clients);
+            sprintf(tmp, "Giocatore %s connesso (%d di %d)", message, user_array.counter + 1, AstaVariables.num_clients);
             if(!sendToAll(&user_array, tmp, GENERAL_MESSAGE)) {
                 closeAllSocket(&user_array);
                 closeSocket(serverSocket, "\nChiususa del server dovuta ad errore di spedizione", __FILE__, __LINE__);
@@ -268,7 +297,7 @@ int main() {
             user_array.counter++;
 
             /* il server comunica a tutti i client che l'asta e' iniziata */
-            if(user_array.counter == AstaVariables.max_clients) {
+            if(user_array.counter == AstaVariables.num_clients) {
                 if(!sendToAll(&user_array, ASTA_STARTED, ASTA_STATUS)) {
                     closeAllSocket(&user_array);
                     closeSocket(serverSocket, "\nChiusura del server dovuta ad errore di spedizione", __FILE__, __LINE__);
@@ -304,7 +333,7 @@ int main() {
     if(!sendToAllAsta(&user_array, &sendAsta, ASTA_MESSAGE)) {
         closeAllSocket(&user_array);
         closeSocket(serverSocket, "Il server ha fallito nel mandare il messaggio di turno, There is nothing we can do..., ", __FILE__, __LINE__);
-        system("start https://www.youtube.com/watch?v=F0Gkr4MBEO0?autoplay=1");
+        system("START https://www.youtube.com/watch?v=F0Gkr4MBEO0?autoplay=1");
     }
 
     WaitForMultipleObjects(user_array.counter, thread_array, TRUE, INFINITE);
@@ -313,6 +342,7 @@ int main() {
         CloseHandle(thread_array[i]);
     }
     printf("\nAsta Finita");
+    system("START https://www.youtube.com/watch?v=dvgZkm1xWPE?autoplay=1");
     
     closesocket(serverSocket);
     WSACleanup();

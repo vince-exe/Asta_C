@@ -111,12 +111,19 @@ void asta_client(SOCKET socketClient, const char* nickname) {
                 break;
 
             case ASTA_STATUS:
-                if(strcmp(message, ASTA_CLOSED) == 0) {
-                    printf("CIAOOOOOOOOOOOOOOOO");
-                    return;
-                }
-                else if(strcmp(message, ASTA_STARTED) == 0) {
+                if(strcmp(message, ASTA_STARTED) == 0) {
                     printf("\nAsta iniziata. [ Che vinca l'amico che ha piu' soldi ]\n");
+                }
+                else if(strcmp(message, ASTA_WON) == 0) {
+                    inputClient.import = sendAsta.import; 
+                    inputClient.msgType = ASTA_WON_FROM_CLIENT;
+                    
+                    if(!sendToServer(socketClient, &inputClient)) {
+                        closeSocket(socketClient, "Il client ha fallito nell'invio del messaggio al server", __FILE__, __LINE__);
+                        return;
+                    }
+                    printf("\n\n[ Asta Vinta ]. Premio aggiudicato all'utente %s alla modica cifra di %d", nickname, sendAsta.import);
+                    return;
                 }
                 break;
 
@@ -161,18 +168,18 @@ int main(int argc , char *argv[]) {
     if((socketClient = socket(AF_INET , SOCK_STREAM , 0 )) == INVALID_SOCKET) {
         printf("Could not create socket : %d" , WSAGetLastError());
     }
-    /* NON CANCELLARE
+
     printf("\nInserisci l'ip del server: ");
     fgets(ipServer, sizeof(ipServer), stdin);
     ipServer[strlen(ipServer) - 1] = '\0';
-    */
-    server.sin_addr.s_addr = inet_addr("127.0.0.1"); 
+    
+    server.sin_addr.s_addr = inet_addr(ipServer); 
     server.sin_family = AF_INET;
-    /* NON CANCELLARE
+ 
     printf("\nInserisci la porta del server (%d, %d): ", MIN_PORT, MAX_PORT);
     serverPort = get_int(MIN_PORT, MAX_PORT);
-    */
-    server.sin_port = htons(8888); 
+    
+    server.sin_port = htons(serverPort); 
     
     char nickname[BUFFER_LEN];
     int typeOfMsg;

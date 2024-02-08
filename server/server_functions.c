@@ -124,7 +124,6 @@ _Bool shiftArray(UserArray* userArray, const char* username) {
         userArray->user_array[i] = userArray->user_array[i + 1];
     }
 
-    free(&userArray->user_array[userArray->counter - 1]);
     userArray->counter--;
     return (_Bool)1;
 }
