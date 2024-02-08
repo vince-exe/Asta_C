@@ -26,7 +26,7 @@
 #pragma comment(lib,"ws2_32.lib") // linka automaticamente la libreria in fase di runtime.
 
 _Bool sendToServer(SOCKET client, InputClient* inputClient) {
-    if((send(client, (char*)inputClient, sizeof(SendAsta), 0) < 0)) {
+    if((send(client, (char*)inputClient, sizeof(InputClient), 0) < 0)) {
         return (_Bool)0;
     }
     

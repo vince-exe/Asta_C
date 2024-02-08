@@ -88,6 +88,7 @@ _Bool handleTurn(HandleClientParams* param, SendAsta* sendAsta) {
     /* controlliamo che non sfori la dimensione dell'array mantenendop il turno dei giocatori */
     if(param->astaVariables->asta_turn >= (param->user_array->counter - 1)) {
         param->astaVariables->asta_turn = 0;
+        printf("eccomi!!");
     }
     else {
         param->astaVariables->asta_turn++;
@@ -116,7 +117,7 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     printf("\nStart listening thread on client %s\n", currentUser.username);
     while(isRunning) {
         /* ricevere la struttura */
-        if(recv(param->user->socket, (char*)&inputClient, sizeof(InputClient), 0) == SOCKET_ERROR) {
+        if(recv(currentUser.socket, (char*)&inputClient, sizeof(InputClient), 0) == SOCKET_ERROR) {
             sprintf(tmp, "Il giocatore %s ha abbandonato l'asta", currentUser.username);
             printf("\n%s", tmp);
 
@@ -162,7 +163,7 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     }
 
     printf("\nEnd thread on client %s", currentUser.username);
-    return (DWORD)0;
+    return 0;
 }
 
 int main() {
