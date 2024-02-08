@@ -61,6 +61,9 @@ typedef struct SendAsta {
 /* 
  * Definizione di un tipo chiamato 'HandleClientParams' che rappresenta i parametri del thread.
  * user: Puntatore al tipo 'User'.
+ * user_array: Array di 'User'.
+ * astaVariables: Puntatore al tipo 'AstaVariables'.
+ * socketServer: Socket del server.
  */
 typedef struct HandleClientParams {
     User* user;
@@ -69,6 +72,11 @@ typedef struct HandleClientParams {
     SOCKET socketServer;
 }HandleClientParams;
 
+/* 
+ * Definizione di un tipo chiamato 'InputClient' che rappresenta i parametri di input del client.
+ * msgType: Tipo del messaggio.
+ * import: Importo inserito del client.
+ */
 typedef struct InputClient {
     int msgType;
     size_t import;

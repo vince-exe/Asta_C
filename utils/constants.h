@@ -58,11 +58,11 @@
 #define ASTA_STARTED "ASTA_STARTED"
 
 /**
- * @brief Messaggio riferito all'inizio dell'asta.
+ * @brief Messaggio riferito alla vittoria dell'asta.
  */
 #define ASTA_WON "ASTA_WON"
 
-// **Fine zona dove si definiscono le costanti relativi ai codici Output dell server**
+// **Fine zona dove si definiscono le costanti relativi ai codici Output dell server.**
 
 // **Inizio zona dove si definiscono le costanti relative ai codici dei messaggi del server.**
 
@@ -77,12 +77,18 @@
 #define ASTA_STATUS 3
 
 /**
- * @brief Codice assegnato al messaggio riferito ai messaggi per quando l'asta ha inizio
+ * @brief Codice assegnato al messaggio riferito ai messaggi per quando l'asta ha inizio.
  */
 #define ASTA_MESSAGE 4
 
+/**
+ * @brief Codice assegnato al messaggio riferito ai messaggi che contengono un importo.
+ */
 #define ASTA_IMPORT 5
 
+/**
+ * @brief Codice assegnato al messaggio riferito ai messaggi che fanno riferimanto ad una vittoria.
+ */
 #define ASTA_WON_FROM_CLIENT 6
 
 /**
@@ -97,6 +103,9 @@
  */
 #define BUFFER_LEN 1024
 
+/**
+ * @brief Valore che rappresenta un valore non trovato.
+ */
 #define NOT_FOUND UINT_MAX
 
 #endif // CONSTANTS_H

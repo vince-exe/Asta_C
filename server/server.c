@@ -103,7 +103,7 @@ DWORD WINAPI handleClient(LPVOID paramater) {
     printf("\nStart listening thread on client %s\n", currentUser.username);
     while(isRunning) {
         /* ricevere la struttura */
-        if(recv(currentUser.socket, (char*)&inputClient, sizeof(InputClient), 0) == SOCKET_ERROR) {
+        if((recv_size = recv(currentUser.socket, (char*)&inputClient, sizeof(InputClient), 0)) == SOCKET_ERROR) {
             sprintf(tmp, "Il giocatore %s ha abbandonato l'asta", currentUser.username);
             printf("\n%s", tmp);
 
@@ -321,9 +321,6 @@ int main() {
             }
         }
     }
-    /* TEMP TEST 
-        - FARLO CON I PUNTATORI DINAMICI 
-    */
     SendAsta sendAsta;
 
     sendAsta.import = AstaVariables.asta_import;
