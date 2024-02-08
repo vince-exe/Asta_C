@@ -31,7 +31,7 @@ typedef struct User {
  */
 typedef struct UserArray {
     User* user_array;
-    int counter;
+    size_t counter;
 } UserArray;
 
 /* 
@@ -41,9 +41,9 @@ typedef struct UserArray {
  * asta_import: Importo iniziale dell'asta.
  */
 typedef struct AstaVariables {
-    int max_clients;
-    int asta_import;
-    int asta_turn;
+    size_t max_clients;
+    size_t asta_import;
+    size_t asta_turn;
 } AstaVariables;
 
 /* 
@@ -53,7 +53,7 @@ typedef struct AstaVariables {
  * message_turn: Messaggio del sever.
  */
 typedef struct SendAsta {
-    int import;
+    size_t import;
     char nickname_turn[255];
     char message_turn[255];
 }SendAsta;
@@ -71,7 +71,7 @@ typedef struct HandleClientParams {
 
 typedef struct InputClient {
     int msgType;
-    int import;
+    size_t import;
 }InputClient;
 
 #endif // STRUCTS_H

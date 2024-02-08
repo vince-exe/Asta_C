@@ -17,6 +17,13 @@
 #include <string.h>
 
 /*
+ * Includere il file di intestazione `winsock2.h`, che contiene le dichiarazioni
+ * delle funzioni e delle macro utilizzate per la programmazione delle socket in
+ * Windows.
+ */
+#include <winsock2.h>
+
+/*
  * Include il file di intestazione `structs.h`, che contiene le definizioni delle
  * costanti utilizzate dal programma.
  */
@@ -27,13 +34,6 @@
  * strutture utilizzate dal programma.
  */
 #include "./structs.h"
-
-/*
- * Includere il file di intestazione `winsock2.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per la programmazione delle socket in
- * Windows.
- */
-#include <winsock2.h>
 
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H

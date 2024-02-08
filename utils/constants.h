@@ -1,6 +1,10 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+/*
+ * Include il file di intestazione `limits.h`, che contiene le definizioni delle
+ * costanti utilizzate.
+ */
 #include <limits.h>
 
 /**
@@ -90,5 +94,7 @@
  * @brief Lunghezza massima del buffer.
  */
 #define BUFFER_LEN 1024
+
+#define NOT_FOUND UINT_MAX
 
 #endif // CONSTANTS_H
