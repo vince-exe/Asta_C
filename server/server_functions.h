@@ -1,54 +1,31 @@
-/*
- * Includere il file di intestazione `stdio.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per l'input/output standard (I/O).
- */
 #include <stdio.h>
-
-/*
- * Includere il file di intestazione `stdlib.h`, che contiene le
- * definizioni delle funzioni di gestione della memoria dinamica.
- */
 #include <stdlib.h>
-
-/*
- * Include il file di intestazione `string.h`, che contiene le
- * definizioni delle funzioni di gestione delle stringhe.
- */
 #include <string.h>
-
-/*
- * Includere il file di intestazione `windows.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per la programmazione in Windows.
- */
 #include <windows.h>
-
-/*
- * Includere il file di intestazione `winsock2.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per la programmazione delle socket in
- * Windows.
- */
 #include <winsock2.h>
 
-/*
- * Include il file di intestazione `functions.h`, che contiene le definizioni delle
- * funzioni utilizzate dal programma.
- */
 #include "../utils/functions.h"
-
-/*
- * Include il file di intestazione `constants.h`, che contiene le definizioni delle
- * constantnti utilizzate dal programma.
- */
 #include "../utils/constants.h"
-
-/*
- * Include il file di intestazione `structs.h`, che contiene le definizioni delle
- * strutture utilizzate dal programma.
- */
 #include "../utils/structs.h"
 
 #ifndef SERVER_FUNCTIONS_H
 #define SERVER_FUNCTIONS_H
+
+/**
+ * @brief funzione che alloca l'username del nuovo utente connesso all'interno dell'array di utenti
+ * 
+ * @param userArray array di utenti
+ * @param username username da allocare
+ */
+void allocateUsername(UserArray* userArray, const char* username);
+
+/**
+ * @brief prende in input le informazioni necessaria per avviare l'asta ed il server
+ * 
+ * @param serverPort la porta sulla quale il server verrà hostato
+ * @param AstaVariables struttura dati che gestisce le variabili dell'asta
+ */
+void takeInput(int* serverPort, AstaVariables* AstaVariables);
 
 /**
  * @brief Funzione che controlla se l'username e' gia' presente tra i vari client.
@@ -59,7 +36,7 @@
  * @return _Bool 0: Se il 'newNickname' non e' presente tra i nickanme di 'user_array'.
  * @return _Bool 1: Se il 'newNickname' e' presente tra i nickanme di 'user_array'.
  */
-_Bool existUsername(UserArray* user_array, const char* newNickname);
+int existUsername(UserArray* user_array, const char* newNickname);
 
 /**
  * @brief Procedura che chiude tutti i socket presenti all'interno di un 'UserArray'.
@@ -79,7 +56,7 @@ void closeAllSocket(UserArray* userArray);
  * @return _Bool 0: Se ci sono stati errori.
  * @return _Bool 1: Se non ci sono stati errori.
  */
-_Bool sendToAllAsta(UserArray* userArray, SendAsta* data, const int msgType_);
+int sendToAllAsta(UserArray* userArray, SendAsta* data, const int msgType_);
 
 /**
  * @brief Funzione che manda a tutti i socket presenti in 'userArray' un messaggio.
@@ -91,7 +68,7 @@ _Bool sendToAllAsta(UserArray* userArray, SendAsta* data, const int msgType_);
  * @return _Bool 0: Se ci sono stati errori.
  * @return _Bool 1: Se non ci sono stati errori.
  */
-_Bool sendToAll(UserArray* userArray, const char* message, const int msgType_);
+int sendToAll(UserArray* userArray, const char* message, const int msgType_);
 
 /**
  * @brief Restituisce la posizione di un elemento in 'user_array' in base al 'username'.
@@ -112,6 +89,34 @@ size_t get_pos(UserArray* userArray, const char* username);
  * @return _Bool 0: Se non è stato eliminato nessuno.
  * @return _Bool 1: Se è stato eliminato il giosto 'User'.
  */
-_Bool shiftArray(UserArray* userArray, const char* username);
+int shiftArray(UserArray* userArray, const char* username);
+
+/**
+ * @brief funzione che gestisce il singolo thread del client
+ * 
+ * @param paramater parametri del thread
+ * @return DWORD 
+ */
+DWORD WINAPI handleClient(LPVOID paramater);
+
+/**
+ * @brief funzione che gestisce l'uscita di un client dall'asta
+ * 
+ * @param param i parametri del thread
+ * @param currentUser l'utente attuale del thread
+ * @param sendAsta struttura che gestisce le informazioni sull'asta
+ */
+void clientQuit(HandleClientParams* param, User* currentUser, SendAsta* sendAsta);
+
+/**
+ * @brief funzione che gestisce i turni dell'asta
+ * 
+ * @param astaVariables struttura che contiene le variabili dell'asta
+ * @param user_array array di utenti
+ * @param sendAsta struttura che contiene informazioni sull'asta
+ * @param check variabile che gestisce l'incremento turni
+ * @return 0: se fallisce 1: se è ok 
+ */
+int handleTurn(AstaVariables* astaVariables, UserArray* user_array, SendAsta* sendAsta, int check);
 
 #endif //SERVER_FUNCTIONS_H

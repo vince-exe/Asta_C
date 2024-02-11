@@ -1,7 +1,3 @@
-/*
- * Include il file di intestazione `function.h`, che contiene le definizioni delle
- * funzioni.
- */
 #include "functions.h"
 
 /**
@@ -13,12 +9,12 @@
  * @return int: Il numero inserito.
  */
 int get_int(const int min, const int max) {
-    char buffer[(char)11];
+    char buffer[11];
     int n = 0;
 
     do {
         fgets(buffer, sizeof(buffer), stdin);
-        buffer[strlen(buffer) - (int)1] = (char)'\0';
+        buffer[strlen(buffer) - 1] = '\0';
         n = atoi(buffer);
     } while(n < min || n > max);
     
@@ -50,13 +46,13 @@ void closeSocket(SOCKET socket, const char* message, const char* file_, const in
  * @return 0: Se hanno fallito.
  * @return 1: Se e' andato tutto a buon fine.
  */
-_Bool sendTo(SOCKET client, const char* message, int msgType_) {
+int sendTo(SOCKET client, const char* message, int msgType_) {
     int msgType = htonl(msgType_); 
 
     if((send(client, (char*)&msgType, sizeof(msgType), 0) < 0) ||
        (send(client, message, strlen(message) + 1, 0) < 0)) {
-        return (_Bool)0;
+        return 0;
     };
 
-    return (_Bool)1;
+    return 1;
 }

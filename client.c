@@ -1,33 +1,14 @@
-/*
- * Includere il file di intestazione `stdio.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per l'input/output standard (I/O).
- */
 #include <stdio.h>
-
-/*
- * Include il file di intestazione `string.h`, che contiene le
- * definizioni delle funzioni di gestione delle stringhe.
- */
 #include <string.h>
-
-/*
- * Includere il file di intestazione `winsock2.h`, che contiene le dichiarazioni
- * delle funzioni e delle macro utilizzate per la programmazione delle socket in
- * Windows.
- */
 #include <winsock2.h>
 
-/*
- * Include il file di intestazione `functions.h`, che contiene le definizioni delle
- * funzioni utilizzate dal programma.
- */
 #include "./utils/functions.h"
 
 #pragma comment(lib,"ws2_32.lib") // linka automaticamente la libreria in fase di runtime.
 
-_Bool sendToServer(SOCKET client, InputClient* inputClient) {
+int sendToServer(SOCKET client, InputClient* inputClient) {
     if((send(client, (char*)inputClient, sizeof(InputClient), 0) < 0)) {
-        return (_Bool)0;
+        return 0;
     }
     
     return 1;
@@ -43,18 +24,18 @@ int checkNickname(SOCKET socketClient, const char* nickname) {
         return 0;
     }
     if((recv_size = recv(socketClient, (char*)&typeOfMsg, sizeof(typeOfMsg), 0)) == SOCKET_ERROR) {
-        closeSocket(socketClient, "Receive Error", __FILE__, __LINE__);
+        closeSocket(socketClient, "\nReceive Error", __FILE__, __LINE__);
         return 0;
     }
     // Normalizza l'ordine dei byte del numero per adeguarlo a una convenzione generalmente accettata
     typeOfMsg = ntohl(typeOfMsg);
     if(typeOfMsg != ASTA_STATUS) {
-        closeSocket(socketClient, "Fatal Error ( message != ASTA_MESSAGES)", __FILE__, __LINE__);
+        closeSocket(socketClient, "\nFatal Error ( message != ASTA_MESSAGES)", __FILE__, __LINE__);
         return 0;
     }
     message[0] = '\0';
     if((recv_size = recv(socketClient, message, sizeof(message) , 0)) == SOCKET_ERROR) {
-        closeSocket(socketClient, "Receive error", __FILE__, __LINE__);
+        closeSocket(socketClient, "\nReceive error", __FILE__, __LINE__);
         return 0;
     }
     message[recv_size] = '\0';
@@ -184,7 +165,7 @@ int main(int argc , char *argv[]) {
     char nickname[BUFFER_LEN];
     int typeOfMsg;
 
-    printf("Inserisci username: ");
+    printf("\nInserisci username: ");
     fgets(nickname, sizeof(nickname), stdin);
     nickname[strlen(nickname) - 1] = '\0'; 
 
